@@ -1,6 +1,7 @@
 package com.company.taskmanagement.config;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.boot.autoconfigure.security.servlet.PathRequest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationProvider;
@@ -22,21 +23,18 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-                // CSRF korumasını devre dışı bırakıyoruz. REST API'ler için bu standarttır.
-                .csrf(AbstractHttpConfigurer::disable)
+                .csrf(AbstractHttpConfigurer::disable) // 1. CSRF'i devre dışı bırak
                 .authorizeHttpRequests(auth -> auth
-                        // Bu adreslere herkesin erişmesine izin ver.
-                        .requestMatchers("/api/auth/**", "/h2-console/**").permitAll()
-                        // Geriye kalan tüm diğer isteklere sadece kimliği doğrulanmış kullanıcıların erişmesine izin ver.
-                        .anyRequest().authenticated()
+                        .requestMatchers("/api/auth/**").permitAll() // 2. Auth adreslerine izni ver
+                        .requestMatchers(PathRequest.toH2Console()).permitAll() // 3. H2 Console'a izni ver (en doğru yöntem)
+                        .anyRequest().authenticated() // 4. Geri kalan her şey kimlik doğrulaması istesin
                 )
-                // Oturum yönetimini STATELESS olarak ayarlıyoruz, çünkü JWT kullanıyoruz.
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .authenticationProvider(authenticationProvider)
-                // Kendi JWT filtremizi, Spring'in standart filtresinden önce çalıştırıyoruz.
-                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
-                // H2 Console'un bir frame içinde çalışabilmesi için bu ayar gerekli.
-                .headers(headers -> headers.frameOptions(frameOptions -> frameOptions.sameOrigin()));
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)) // 5. Oturumları durumsuz yap
+                .authenticationProvider(authenticationProvider) // 6. Kendi doğrulama sağlayıcımızı ekle
+                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class) // 7. Kendi JWT filtremizi ekle
+                .headers(headers -> headers
+                        .frameOptions(frameOptions -> frameOptions.sameOrigin()) // 8. H2 Console'un çalışması için
+                );
 
         return http.build();
     }
