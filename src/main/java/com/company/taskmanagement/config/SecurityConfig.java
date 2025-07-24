@@ -22,21 +22,20 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
+                // CSRF korumasını devre dışı bırakıyoruz. REST API'ler için bu standarttır.
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
-                        // '/api/auth/' ile başlayan tüm adreslere ve H2 konsoluna herkesin erişmesine izin ver.
+                        // Bu adreslere herkesin erişmesine izin ver.
                         .requestMatchers("/api/auth/**", "/h2-console/**").permitAll()
-                        // Geriye kalan tüm diğer isteklere sadece kimliği doğrulanmış (giriş yapmış)
-                        // kullanıcıların erişmesine izin ver.
+                        // Geriye kalan tüm diğer isteklere sadece kimliği doğrulanmış kullanıcıların erişmesine izin ver.
                         .anyRequest().authenticated()
                 )
-                // OTURUM YÖNETİMİ: Her isteği durumsuz (stateless) yap.
-                // Spring Security, session cookie'leri oluşturmayacak. Her istek JWT ile doğrulanacak.
+                // Oturum yönetimini STATELESS olarak ayarlıyoruz, çünkü JWT kullanıyoruz.
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authenticationProvider(authenticationProvider)
-                // OLUŞTURDUĞUMUZ FİLTREYİ, standart kullanıcı adı/şifre filtresinden ÖNCE çalışacak şekilde ekliyoruz.
+                // Kendi JWT filtremizi, Spring'in standart filtresinden önce çalıştırıyoruz.
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
-                // H2 Console'un frame içinde çalışabilmesi için bu ayar gerekli.
+                // H2 Console'un bir frame içinde çalışabilmesi için bu ayar gerekli.
                 .headers(headers -> headers.frameOptions(frameOptions -> frameOptions.sameOrigin()));
 
         return http.build();
